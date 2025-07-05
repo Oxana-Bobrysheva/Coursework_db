@@ -4,34 +4,32 @@ from dotenv import load_dotenv
 from db_manager import DBManager
 import requests
 
+
 def get_vacancies_by_keyword(keyword: str, max_vacancies: int = 100) -> list:
     url = "https://api.hh.ru/vacancies"
-    params = {
-        "text": keyword,
-        "per_page": 20,
-        "page": 0
-    }
+    params = {"text": keyword, "per_page": 20, "page": 0}
     vacancies = []
     while len(vacancies) < max_vacancies:
         response = requests.get(url, params=params)
         response.raise_for_status()
         data = response.json()
-        vacancies.extend(data['items'])
-        if params['page'] >= data['pages'] - 1:
+        vacancies.extend(data["items"])
+        if params["page"] >= data["pages"] - 1:
             break
-        params['page'] += 1
+        params["page"] += 1
     return vacancies[:max_vacancies]
+
 
 def extract_employers_and_vacancies(vacancies):
     employers = {}
     vacancies_list = []
 
     for vac in vacancies:
-        emp = vac.get('employer')
+        emp = vac.get("employer")
         if not emp:
             # Нет работодателя — пропускаем
             continue
-        emp_id = emp.get('id')
+        emp_id = emp.get("id")
         if not emp_id:
             # Нет id работодателя — пропускаем
             continue
@@ -42,29 +40,30 @@ def extract_employers_and_vacancies(vacancies):
 
         if emp_id not in employers:
             employers[emp_id] = {
-                'id': emp_id,
-                'name': emp.get('name', 'Unknown'),
-                'url': emp.get('url', '')
+                "id": emp_id,
+                "name": emp.get("name", "Unknown"),
+                "url": emp.get("url", ""),
             }
 
-        salary = vac.get('salary')
-        salary_from = salary.get('from') if salary else None
-        salary_to = salary.get('to') if salary else None
-        salary_currency = salary.get('currency') if salary else None
-        area_name = vac.get('area', {}).get('name', '')
+        salary = vac.get("salary")
+        salary_from = salary.get("from") if salary else None
+        salary_to = salary.get("to") if salary else None
+        salary_currency = salary.get("currency") if salary else None
+        area_name = vac.get("area", {}).get("name", "")
         vacancy_data = {
-            'id': int(vac['id']),
-            'name': vac.get('name', ''),
-            'employer_id': emp_id,
-            'salary_from': salary_from,
-            'salary_to': salary_to,
-            'salary_currency': salary_currency,
-            'area_name': area_name,
-            'url': vac.get('alternate_url', '')
+            "id": int(vac["id"]),
+            "name": vac.get("name", ""),
+            "employer_id": emp_id,
+            "salary_from": salary_from,
+            "salary_to": salary_to,
+            "salary_currency": salary_currency,
+            "area_name": area_name,
+            "url": vac.get("alternate_url", ""),
         }
         vacancies_list.append(vacancy_data)
 
     return employers, vacancies_list
+
 
 def main():
     load_dotenv()
@@ -72,7 +71,7 @@ def main():
         host=os.getenv("DB_HOST"),
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
-        password=os.getenv("DB_PASSWORD")
+        password=os.getenv("DB_PASSWORD"),
     )
     db = DBManager(connection)
     db.create_tables()
@@ -110,12 +109,15 @@ def main():
     for vac in db.get_vacancies_with_higher_salary():
         print(f"{vac[1]} | {vac[0]} | {vac[2]} — {vac[3]}")
 
-    keyword_for_search = input("\nВведите ключевое слово для поиска в названиях вакансий: ").strip()
+    keyword_for_search = input(
+        "\nВведите ключевое слово для поиска в названиях вакансий: "
+    ).strip()
     print(f"Вакансии, содержащие '{keyword_for_search}':")
     for vac in db.get_vacancies_with_keyword(keyword_for_search):
         print(f"{vac[1]} | {vac[0]} | {vac[2]} — {vac[3]}")
 
     connection.close()
+
 
 if __name__ == "__main__":
     main()
